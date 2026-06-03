@@ -360,7 +360,7 @@
     <!-- Loading state -->
     <div id="loading" class="hidden">
       <div class="spinner"></div>
-      <p>正在搜索周边的美食...</p>
+      <p id="loading-text">正在搜索周边的美食...</p>
     </div>
 
     <!-- Error / empty state -->
@@ -637,6 +637,22 @@
     var searchResults = [];
     var filteredResults = [];
     var seenIndices = [];
+    var lastKeyword = '';
+
+    // Food keywords for diverse results
+    var FOOD_KEYWORDS = [
+      '小吃', '快餐', '面馆', '烧烤', '汉堡', '盖浇饭', '麻辣烫',
+      '米粉', '饺子', '中餐', '火锅', '炸鸡', '馄饨', '米线',
+      '凉皮', '黄焖鸡', '酸菜鱼', '沙县小吃', '兰州拉面', '螺蛳粉',
+      '煲仔饭', '麻辣香锅', '串串', '肉夹馍', '煎饼', '肠粉',
+      '小笼包', '鸭血粉丝', '过桥米线', '卤肉饭', '日料', '韩餐',
+      '披萨', '寿司', '麻辣拌', '烧烤', '拉面', '刀削面',
+    ];
+
+    function pickRandomKeyword() {
+      var i = Math.floor(Math.random() * FOOD_KEYWORDS.length);
+      return FOOD_KEYWORDS[i];
+    }
 
     function searchNearby(params) {
       return new Promise(function(resolve, reject) {
@@ -652,8 +668,9 @@
             extensions: 'all',
           });
 
+          var keyword = params.keyword || '餐饮';
           placeSearch.searchNearBy(
-            '餐饮',
+            keyword,
             [params.center.lng, params.center.lat],
             params.radius,
             function(status, result) {
@@ -716,7 +733,9 @@
       const minBudget = parseInt(document.getElementById('budget-min').value) || 0;
       const maxBudget = parseInt(document.getElementById('budget-max').value) || 9999;
 
-      showLoading(true);
+      // Pick random food keyword
+      lastKeyword = pickRandomKeyword();
+      showLoading(true, lastKeyword);
       hideResult();
       hideMessage();
 
@@ -724,6 +743,7 @@
         const results = await searchNearby({
           center: currentPosition,
           radius: radius,
+          keyword: lastKeyword,
         });
 
         searchResults = results;
@@ -766,8 +786,12 @@
     });
 
     // ====== UI Helpers ======
-    function showLoading(show) {
+    function showLoading(show, keyword) {
       document.getElementById('loading').classList.toggle('hidden', !show);
+      if (keyword) {
+        document.getElementById('loading-text').textContent =
+          '正在搜索周边的「' + keyword + '」...';
+      }
     }
 
     function hideResult() {
