@@ -594,7 +594,7 @@
               reject({ code: 'unknown', message: '定位失败: ' + err.message });
             }
           },
-          { enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
         );
       });
     }
@@ -607,7 +607,7 @@
         }
         AMap.plugin('AMap.Geolocation', function() {
           var geolocation = new AMap.Geolocation({
-            enableHighAccuracy: false, timeout: 20000
+            enableHighAccuracy: true, timeout: 15000
           });
           geolocation.getCurrentPosition(function(status, result) {
             if (status === 'complete' && result.position) {
