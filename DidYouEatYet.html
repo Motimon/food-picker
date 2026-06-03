@@ -255,7 +255,7 @@
 <body>
   <header id="app-header">
     <h1 class="title">🍜 您吃了吗？</h1>
-    <p class="subtitle">今天吃什么？让它帮你决定</p>
+    <p class="subtitle">吃饱才有力气干活</p>
   </header>
 
   <main id="app-main">
@@ -437,15 +437,38 @@
       arrow.classList.toggle('open');
     });
 
+    // Apply key and load SDK without page reload
+    function applyAndReloadSDK() {
+      updateSettingsUI();
+      hideFirstUseOverlay();
+      // Remove old SDK script if present
+      var oldScript = document.querySelector('script[src*="webapi.amap.com"]');
+      if (oldScript) oldScript.remove();
+      // Reload SDK with new key
+      loadAmapSDK(function() {
+        console.log('Amap SDK reloaded');
+      });
+    }
+
     // Save key from settings
     document.getElementById('btn-key-save').addEventListener('click', function() {
-      const key = document.getElementById('key-input').value.trim();
-      const sec = document.getElementById('security-input').value.trim();
+      var key = document.getElementById('key-input').value.trim();
+      var sec = document.getElementById('security-input').value.trim();
+      // If input still shows masked value, use stored original
+      if (key.indexOf('****') !== -1) {
+        key = getKey();
+      }
+      if (sec === '****') {
+        sec = getSecurity();
+      }
       if (!key) { alert('请输入 API Key'); return; }
       if (!sec) { alert('请输入安全密钥（jscode）'); return; }
       saveKey(key);
       saveSecurity(sec);
-      window.location.reload();
+      // Collapse settings
+      document.getElementById('settings-body').classList.remove('open');
+      document.getElementById('settings-arrow').classList.remove('open');
+      applyAndReloadSDK();
     });
 
     // Clear key
@@ -472,7 +495,7 @@
       saveKey(key);
       saveSecurity(sec);
       hideFirstUseOverlay();
-      window.location.reload();
+      applyAndReloadSDK();
     });
 
     // Determine initial settings body state
@@ -931,7 +954,7 @@
       const container = document.getElementById('history-list');
       const items = loadHistory();
       if (items.length === 0) {
-        container.innerHTML = '<span style="color:#aaa;font-size:12px;">还没有记录，去选一家吧</span>';
+        container.innerHTML = '<span style="color:#aaa;font-size:12px;">还没有记录，去选一家吧~</span>';
         return;
       }
       container.innerHTML = items.map(function(item) {
