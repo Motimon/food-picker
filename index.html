@@ -368,7 +368,9 @@
 
     <!-- History -->
     <section id="history-section">
-      <h4>📋 最近选择</h4>
+      <h4>📋 最近选择
+        <button id="btn-clear-history" class="btn-small" style="margin-left:8px;font-size:11px;">清空</button>
+      </h4>
       <div id="history-list"></div>
     </section>
   </main>
@@ -896,6 +898,13 @@
     // ====== History ======
     var HISTORY_KEY = 'food_picker_history';
     var MAX_HISTORY = 10;
+
+    // Clear history button
+    document.getElementById('btn-clear-history').addEventListener('click', function() {
+      if (!confirm('确定要清空所有历史记录吗？')) return;
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    });
 
     function loadHistory() {
       try {
