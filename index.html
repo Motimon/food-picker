@@ -138,6 +138,17 @@
       font-size: 12px; padding: 4px 10px; border: 1px solid #ddd;
       border-radius: 14px; background: white; cursor: pointer;
     }
+    .btn-locate {
+      width: 100%; padding: 12px; margin-top: 8px;
+      font-size: 16px; font-weight: 600; border: 2px dashed var(--primary);
+      border-radius: 10px; background: #FFF0E8; color: var(--primary);
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-locate:active { background: #FFE4D0; }
+    .loc-error {
+      margin-top: 8px; font-size: 12px; color: var(--red);
+      padding: 8px 12px; background: #FFF0F0; border-radius: 8px;
+    }
     #manual-loc { margin-top: 10px; display: flex; gap: 8px; }
     #manual-loc input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
     #manual-loc button {
@@ -299,12 +310,13 @@
     <section id="location-section">
       <div class="loc-row">
         <span class="loc-icon">📍</span>
-        <span id="loc-text">正在获取位置...</span>
-        <button id="loc-retry" class="btn-small hidden">重定位</button>
+        <span id="loc-text">点击下方按钮获取位置</span>
       </div>
+      <button id="btn-locate" class="btn-locate">📍 获取我的位置</button>
+      <div id="loc-error" class="loc-error hidden"></div>
       <!-- Manual location fallback -->
       <div id="manual-loc" class="hidden">
-        <input type="text" id="manual-address" placeholder="手动输入地址">
+        <input type="text" id="manual-address" placeholder="或手动输入地址">
         <button id="manual-search">搜索</button>
       </div>
     </section>
@@ -524,7 +536,6 @@
       script.onload = function() {
         updateSettingsUI();
         hideFirstUseOverlay();
-        locate();
         if (callback) callback();
       };
       script.onerror = function() {
@@ -537,13 +548,25 @@
     var currentPosition = null;
     var currentAddress = '';
 
+    function showLocError(msg) {
+      var el = document.getElementById('loc-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+    function hideLocError() {
+      document.getElementById('loc-error').classList.add('hidden');
+    }
+
     function updateLocationUI() {
-      const el = document.getElementById('loc-text');
+      var el = document.getElementById('loc-text');
+      var btn = document.getElementById('btn-locate');
       if (currentAddress) {
-        el.textContent = '当前位置: ' + currentAddress;
+        el.textContent = '📍 当前位置: ' + currentAddress;
+        btn.textContent = '📍 重新定位';
       } else if (currentPosition) {
-        el.textContent = '已定位 (' + currentPosition.lng.toFixed(4) + ', ' +
+        el.textContent = '📍 已定位 (' + currentPosition.lng.toFixed(4) + ', ' +
           currentPosition.lat.toFixed(4) + ')';
+        btn.textContent = '📍 重新定位';
       }
       if (currentPosition) {
         document.getElementById('btn-pick').disabled = false;
@@ -553,7 +576,7 @@
     function getBrowserLocation() {
       return new Promise(function(resolve, reject) {
         if (!navigator.geolocation) {
-          reject(new Error('浏览器不支持定位'));
+          reject({ code: 'no_api', message: '你的浏览器不支持定位功能' });
           return;
         }
         navigator.geolocation.getCurrentPosition(
@@ -561,9 +584,17 @@
             resolve({ lng: pos.coords.longitude, lat: pos.coords.latitude });
           },
           function(err) {
-            reject(new Error('定位失败: ' + err.message));
+            if (err.code === 1) {
+              reject({ code: 'denied', message: '定位权限被拒绝。请在浏览器设置中允许本网站获取位置' });
+            } else if (err.code === 2) {
+              reject({ code: 'unavailable', message: '无法获取位置信息，请确认手机已开启 GPS 定位服务' });
+            } else if (err.code === 3) {
+              reject({ code: 'timeout', message: '定位超时，请到信号好的地方再试' });
+            } else {
+              reject({ code: 'unknown', message: '定位失败: ' + err.message });
+            }
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
         );
       });
     }
@@ -571,12 +602,12 @@
     function getAmapLocation() {
       return new Promise(function(resolve, reject) {
         if (!window.AMap) {
-          reject(new Error('高德地图未加载'));
+          reject({ code: 'no_amap', message: '高德地图未加载，请检查 Key 配置' });
           return;
         }
         AMap.plugin('AMap.Geolocation', function() {
-          const geolocation = new AMap.Geolocation({
-            enableHighAccuracy: true, timeout: 10000
+          var geolocation = new AMap.Geolocation({
+            enableHighAccuracy: true, timeout: 15000
           });
           geolocation.getCurrentPosition(function(status, result) {
             if (status === 'complete' && result.position) {
@@ -586,7 +617,7 @@
                 address: result.formattedAddress || '',
               });
             } else {
-              reject(new Error('高德定位失败'));
+              reject({ code: 'amap_fail', message: '高德定位失败，请尝试浏览器定位或手动输入地址' });
             }
           });
         });
@@ -594,32 +625,58 @@
     }
 
     async function locate() {
-      document.getElementById('loc-text').textContent = '正在获取位置...';
-      document.getElementById('loc-retry').classList.add('hidden');
+      hideLocError();
+      var locText = document.getElementById('loc-text');
+      locText.textContent = '⏳ 正在获取位置...';
 
+      // Try browser GPS first
       try {
-        const pos = await getBrowserLocation();
+        var pos = await getBrowserLocation();
         currentPosition = { lng: pos.lng, lat: pos.lat };
         currentAddress = '';
         updateLocationUI();
+        hideLocError();
+        // Reverse geocode via Amap for address
         if (window.AMap) {
           try {
-            const amapResult = await getAmapLocation();
+            var amapResult = await getAmapLocation();
             currentAddress = amapResult.address || '';
+            updateLocationUI();
           } catch (e) {
-            console.warn('Amap reverse geocode failed:', e);
+            // Amap failed but browser GPS worked, that's ok
+            console.warn('Amap geocode failed, using coordinates only:', e);
           }
         }
-        updateLocationUI();
         document.getElementById('manual-loc').classList.add('hidden');
-      } catch (e) {
-        document.getElementById('loc-text').textContent = 'GPS 定位失败，试试手动输入...';
+        return;
+      } catch (browserErr) {
+        // Browser GPS failed, try Amap IP-based
+        if (window.AMap) {
+          try {
+            var amapResult = await getAmapLocation();
+            currentPosition = { lng: amapResult.lng, lat: amapResult.lat };
+            currentAddress = amapResult.address || '';
+            updateLocationUI();
+            hideLocError();
+            document.getElementById('manual-loc').classList.add('hidden');
+            return;
+          } catch (amapErr) {
+            // Both failed
+            showLocError(browserErr.message || '定位失败');
+            locText.textContent = '点击下方按钮获取位置';
+            document.getElementById('manual-loc').classList.remove('hidden');
+            return;
+          }
+        }
+        // No Amap, show browser error
+        showLocError(browserErr.message || '定位失败，请开启手机 GPS 后重试');
+        locText.textContent = '点击下方按钮获取位置';
         document.getElementById('manual-loc').classList.remove('hidden');
       }
     }
 
-    // Retry button
-    document.getElementById('loc-retry').addEventListener('click', function() {
+    // "获取位置" button
+    document.getElementById('btn-locate').addEventListener('click', function() {
       locate();
     });
 
