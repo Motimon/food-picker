@@ -573,7 +573,7 @@
       }
     }
 
-    function getBrowserLocation() {
+    function getBrowserLocation(highAccuracy) {
       return new Promise(function(resolve, reject) {
         if (!navigator.geolocation) {
           reject({ code: 'no_api', message: '你的浏览器不支持定位功能' });
@@ -594,7 +594,8 @@
               reject({ code: 'unknown', message: '定位失败: ' + err.message });
             }
           },
-          { enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 }
+          { enableHighAccuracy: !!highAccuracy, timeout: highAccuracy ? 30000 : 20000,
+            maximumAge: highAccuracy ? 0 : 120000 }
         );
       });
     }
@@ -629,47 +630,64 @@
       var locText = document.getElementById('loc-text');
       locText.textContent = '⏳ 正在获取位置...';
 
-      // Try browser GPS first
+      // Step 1: Try low-accuracy (WiFi/cell, fast)
       try {
-        var pos = await getBrowserLocation();
+        var pos = await getBrowserLocation(false);
         currentPosition = { lng: pos.lng, lat: pos.lat };
         currentAddress = '';
+        onLocateSuccess();
+        return;
+      } catch (lowErr) {
+        // If denied or unsupported, don't retry — just fall through
+        if (lowErr.code === 'denied' || lowErr.code === 'no_api') {
+          onLocateFail(lowErr);
+          return;
+        }
+        // Timeout or unavailable: try high-accuracy GPS
+        locText.textContent = '⏳ 快速定位失败，尝试 GPS 精确定位...';
+        try {
+          var pos = await getBrowserLocation(true);
+          currentPosition = { lng: pos.lng, lat: pos.lat };
+          currentAddress = '';
+          onLocateSuccess();
+          return;
+        } catch (highErr) {
+          // Both failed, try Amap IP-based
+          if (window.AMap) {
+            try {
+              var amapResult = await getAmapLocation();
+              currentPosition = { lng: amapResult.lng, lat: amapResult.lat };
+              currentAddress = amapResult.address || '';
+              updateLocationUI();
+              hideLocError();
+              document.getElementById('manual-loc').classList.add('hidden');
+              return;
+            } catch (amapErr) {
+              onLocateFail(highErr);
+              return;
+            }
+          }
+          onLocateFail(highErr);
+        }
+      }
+
+      function onLocateSuccess() {
         updateLocationUI();
         hideLocError();
         // Reverse geocode via Amap for address
         if (window.AMap) {
           try {
-            var amapResult = await getAmapLocation();
-            currentAddress = amapResult.address || '';
-            updateLocationUI();
-          } catch (e) {
-            // Amap failed but browser GPS worked, that's ok
-            console.warn('Amap geocode failed, using coordinates only:', e);
-          }
+            getAmapLocation().then(function(r) {
+              currentAddress = r.address || '';
+              updateLocationUI();
+            }).catch(function() {});
+          } catch (e) {}
         }
         document.getElementById('manual-loc').classList.add('hidden');
-        return;
-      } catch (browserErr) {
-        // Browser GPS failed, try Amap IP-based
-        if (window.AMap) {
-          try {
-            var amapResult = await getAmapLocation();
-            currentPosition = { lng: amapResult.lng, lat: amapResult.lat };
-            currentAddress = amapResult.address || '';
-            updateLocationUI();
-            hideLocError();
-            document.getElementById('manual-loc').classList.add('hidden');
-            return;
-          } catch (amapErr) {
-            // Both failed
-            showLocError(browserErr.message || '定位失败');
-            locText.textContent = '点击下方按钮获取位置';
-            document.getElementById('manual-loc').classList.remove('hidden');
-            return;
-          }
-        }
-        // No Amap, show browser error
-        showLocError(browserErr.message || '定位失败，请开启手机 GPS 后重试');
+      }
+
+      function onLocateFail(err) {
+        showLocError(err.message || '定位失败');
         locText.textContent = '点击下方按钮获取位置';
         document.getElementById('manual-loc').classList.remove('hidden');
       }
