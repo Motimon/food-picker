@@ -268,9 +268,10 @@
       <div id="settings-body">
         <p class="hint">
           前往 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
-          注册并创建「Web 服务」应用，获取 Key
+          注册并创建「Web 端(JS API)」应用，获取 Key 和安全密钥
         </p>
         <input type="text" id="key-input" placeholder="粘贴你的高德 Key">
+        <input type="text" id="security-input" placeholder="粘贴安全密钥（jscode）">
         <div class="btn-row">
           <button id="btn-key-save">💾 保存</button>
           <button id="btn-key-clear">🗑 清除</button>
@@ -284,6 +285,7 @@
         <h2>🍜 欢迎使用！</h2>
         <p class="sub">在开始之前，请先配置高德地图 API Key</p>
         <input type="text" id="first-key-input" placeholder="粘贴你的 Key">
+        <input type="text" id="first-security-input" placeholder="粘贴安全密钥（jscode）">
         <div class="tip">
           还没有 Key？去 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
           免费注册，创建「Web 服务」应用即可获取。
@@ -375,30 +377,37 @@
   <script>
     // ====== API Key Management ======
     const KEY_STORAGE = 'amap_key';
+    const SECURITY_STORAGE = 'amap_security';
 
     function getKey() { return localStorage.getItem(KEY_STORAGE) || ''; }
     function saveKey(k) { localStorage.setItem(KEY_STORAGE, k.trim()); }
     function clearKey() { localStorage.removeItem(KEY_STORAGE); }
 
-    function hasKey() { return !!getKey(); }
+    function getSecurity() { return localStorage.getItem(SECURITY_STORAGE) || ''; }
+    function saveSecurity(s) { localStorage.setItem(SECURITY_STORAGE, s.trim()); }
+    function clearSecurity() { localStorage.removeItem(SECURITY_STORAGE); }
+
+    function hasKey() { return !!(getKey() && getSecurity()); }
 
     // Update settings section UI
     function updateSettingsUI() {
       const has = hasKey();
       const status = document.getElementById('settings-status');
       const btnPick = document.getElementById('btn-pick');
-      const input = document.getElementById('key-input');
+      const keyInput = document.getElementById('key-input');
+      const secInput = document.getElementById('security-input');
 
       if (has) {
         status.textContent = '已配置 ✓';
         status.className = 'ok';
-        // Show masked key so user knows what's stored
         const k = getKey();
-        input.value = k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : k;
+        keyInput.value = k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : k;
+        secInput.value = '****';
       } else {
         status.textContent = '未配置 Key';
         status.className = 'no';
-        input.value = '';
+        keyInput.value = '';
+        secInput.value = '';
         btnPick.disabled = true;
       }
     }
@@ -427,28 +436,38 @@
 
     // Save key from settings
     document.getElementById('btn-key-save').addEventListener('click', function() {
-      const input = document.getElementById('key-input').value.trim();
-      if (!input) { alert('请输入有效的 API Key'); return; }
-      saveKey(input);
+      const key = document.getElementById('key-input').value.trim();
+      const sec = document.getElementById('security-input').value.trim();
+      if (!key) { alert('请输入 API Key'); return; }
+      if (!sec) { alert('请输入安全密钥（jscode）'); return; }
+      saveKey(key);
+      saveSecurity(sec);
       window.location.reload();
     });
 
     // Clear key
     document.getElementById('btn-key-clear').addEventListener('click', function() {
-      if (!confirm('确定要清除已保存的 Key 吗？')) return;
+      if (!confirm('确定要清除已保存的 Key 和安全密钥吗？')) return;
       clearKey();
+      clearSecurity();
       window.location.reload();
     });
 
-    // First-use save button
-    document.getElementById('first-key-input').addEventListener('input', function() {
-      document.getElementById('btn-first-save').disabled = !this.value.trim();
-    });
+    // First-use: enable button only when both fields are filled
+    function checkFirstUseReady() {
+      const keyOk = document.getElementById('first-key-input').value.trim().length > 0;
+      const secOk = document.getElementById('first-security-input').value.trim().length > 0;
+      document.getElementById('btn-first-save').disabled = !(keyOk && secOk);
+    }
+    document.getElementById('first-key-input').addEventListener('input', checkFirstUseReady);
+    document.getElementById('first-security-input').addEventListener('input', checkFirstUseReady);
 
     document.getElementById('btn-first-save').addEventListener('click', function() {
-      const input = document.getElementById('first-key-input').value.trim();
-      if (!input) return;
-      saveKey(input);
+      const key = document.getElementById('first-key-input').value.trim();
+      const sec = document.getElementById('first-security-input').value.trim();
+      if (!key || !sec) return;
+      saveKey(key);
+      saveSecurity(sec);
       hideFirstUseOverlay();
       window.location.reload();
     });
@@ -466,6 +485,11 @@
     function loadAmapSDK(callback) {
       const key = getKey();
       if (!key) return; // Don't load if no key, first-use overlay will show
+
+      // Set security config BEFORE loading SDK
+      window._AMapSecurityConfig = {
+        securityJsCode: getSecurity(),
+      };
 
       const script = document.createElement('script');
       script.src = 'https://webapi.amap.com/maps?v=2.0&key=' + key +
