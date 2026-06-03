@@ -883,9 +883,8 @@
           return FOOD_ICON_MAP[i][1];
         }
       }
-      // Fallback: random from a diverse set
-      var FALLBACK = ['🍽️', '😋', '🍳', '🥢', '🫕'];
-      return FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
+      // Fallback: chopsticks if we can't tell what they sell
+      return '🥢';
     }
 
     function showResult(restaurant) {
