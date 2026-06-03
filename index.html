@@ -43,40 +43,79 @@
     .title { font-size: 28px; font-weight: 700; }
     .subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
 
-    /* ====== Warning Banner ====== */
-    .warning-banner {
-      background: #FFF3CD;
-      border: 1px solid #FFC107;
-      border-radius: var(--radius);
-      padding: 10px 14px;
-      font-size: 13px;
-      margin-bottom: 12px;
+    /* ====== Settings Section ====== */
+    #settings-section {
+      background: var(--card-bg); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px;
     }
-    .warning-banner a { color: var(--primary); }
+    #settings-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px; cursor: pointer;
+      user-select: none; -webkit-user-select: none;
+      font-size: 14px; font-weight: 600;
+    }
+    #settings-header .arrow {
+      margin-left: auto; font-size: 12px; transition: transform 0.2s;
+    }
+    #settings-header .arrow.open { transform: rotate(180deg); }
+    #settings-status {
+      font-size: 11px; color: var(--text-light); font-weight: 400;
+      margin-left: 4px;
+    }
+    #settings-status.ok { color: var(--green); }
+    #settings-status.no { color: var(--red); }
+    #settings-body {
+      padding: 0 14px; max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    #settings-body.open {
+      max-height: 300px; padding: 0 14px 14px 14px;
+    }
+    #settings-body .hint {
+      font-size: 12px; color: var(--text-light); margin-bottom: 10px;
+    }
+    #settings-body .hint a { color: var(--primary); }
+    #settings-body input {
+      width: 100%; padding: 10px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 14px; margin-bottom: 10px;
+    }
+    #settings-body .btn-row { display: flex; gap: 8px; }
+    #settings-body .btn-row button {
+      flex: 1; padding: 8px 0; border: none; border-radius: 8px;
+      font-size: 14px; cursor: pointer;
+    }
+    #btn-key-save { background: var(--primary); color: white; }
+    #btn-key-clear { background: #eee; color: var(--text); }
 
-    /* ====== Modal ====== */
-    .modal {
+    /* ====== First-use overlay ====== */
+    #first-use-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.6); z-index: 200;
       display: flex; align-items: center; justify-content: center;
-      z-index: 100;
+      padding: 20px;
     }
-    .modal-content {
+    #first-use-card {
       background: white; border-radius: var(--radius);
-      padding: 20px; width: 90%; max-width: 360px;
+      padding: 24px; width: 100%; max-width: 380px;
+      text-align: center;
     }
-    .modal-content h3 { margin-bottom: 8px; }
-    .modal-content p { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
-    .modal-content input {
+    #first-use-card h2 { margin-bottom: 6px; }
+    #first-use-card .sub { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
+    #first-use-card input {
       width: 100%; padding: 10px; border: 1px solid #ddd;
       border-radius: 8px; font-size: 14px; margin-bottom: 12px;
     }
-    .modal-content button {
-      padding: 8px 16px; border: none; border-radius: 8px;
-      font-size: 14px; cursor: pointer; margin-right: 8px;
+    #first-use-card .tip {
+      font-size: 12px; color: var(--text-light); margin-bottom: 14px;
+      text-align: left;
     }
-    #key-save { background: var(--primary); color: white; }
-    #key-cancel { background: #eee; color: var(--text); }
+    #first-use-card .tip a { color: var(--primary); }
+    #btn-first-save {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      background: var(--primary); color: white; font-size: 16px;
+      font-weight: 600; cursor: pointer;
+    }
+    #btn-first-save:disabled { background: #ccc; cursor: not-allowed; }
 
     /* ====== Sections ====== */
     section { margin-bottom: 16px; }
@@ -219,19 +258,37 @@
   </header>
 
   <main id="app-main">
-    <!-- API Key banner -->
-    <div id="key-banner" class="warning-banner hidden">
-      ⚠️ 请先配置高德地图 API Key（<a href="#" id="key-link">点击设置</a>）
-    </div>
+    <!-- Settings -->
+    <section id="settings-section">
+      <div id="settings-header">
+        ⚙️ 设置
+        <span id="settings-status" class="no">未配置 Key</span>
+        <span class="arrow" id="settings-arrow">▼</span>
+      </div>
+      <div id="settings-body">
+        <p class="hint">
+          前往 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
+          注册并创建「Web 服务」应用，获取 Key
+        </p>
+        <input type="text" id="key-input" placeholder="粘贴你的高德 Key">
+        <div class="btn-row">
+          <button id="btn-key-save">💾 保存</button>
+          <button id="btn-key-clear">🗑 清除</button>
+        </div>
+      </div>
+    </section>
 
-    <!-- Key input modal (hidden by default) -->
-    <div id="key-modal" class="modal hidden">
-      <div class="modal-content">
-        <h3>设置 API Key</h3>
-        <p>前往 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a> 注册并创建应用，获取 Web 服务 Key</p>
-        <input type="text" id="key-input" placeholder="粘贴你的 Key">
-        <button id="key-save">保存</button>
-        <button id="key-cancel">取消</button>
+    <!-- First-use overlay -->
+    <div id="first-use-overlay" class="hidden">
+      <div id="first-use-card">
+        <h2>🍜 欢迎使用！</h2>
+        <p class="sub">在开始之前，请先配置高德地图 API Key</p>
+        <input type="text" id="first-key-input" placeholder="粘贴你的 Key">
+        <div class="tip">
+          还没有 Key？去 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
+          免费注册，创建「Web 服务」应用即可获取。
+        </div>
+        <button id="btn-first-save" disabled>开始使用</button>
       </div>
     </div>
 
@@ -321,54 +378,106 @@
 
     function getKey() { return localStorage.getItem(KEY_STORAGE) || ''; }
     function saveKey(k) { localStorage.setItem(KEY_STORAGE, k.trim()); }
+    function clearKey() { localStorage.removeItem(KEY_STORAGE); }
 
-    function checkKey() {
-      const key = getKey();
-      const banner = document.getElementById('key-banner');
-      if (!key) {
-        banner.classList.remove('hidden');
-        document.getElementById('btn-pick').disabled = true;
-        return false;
+    function hasKey() { return !!getKey(); }
+
+    // Update settings section UI
+    function updateSettingsUI() {
+      const has = hasKey();
+      const status = document.getElementById('settings-status');
+      const btnPick = document.getElementById('btn-pick');
+      const input = document.getElementById('key-input');
+
+      if (has) {
+        status.textContent = '已配置 ✓';
+        status.className = 'ok';
+        // Show masked key so user knows what's stored
+        const k = getKey();
+        input.value = k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : k;
+      } else {
+        status.textContent = '未配置 Key';
+        status.className = 'no';
+        input.value = '';
+        btnPick.disabled = true;
       }
-      banner.classList.add('hidden');
-      return true;
     }
 
-    // Modal controls
-    document.getElementById('key-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('key-modal').classList.remove('hidden');
-      document.getElementById('key-input').value = getKey();
+    // First-use overlay
+    function showFirstUseOverlay() {
+      if (hasKey()) {
+        document.getElementById('first-use-overlay').classList.add('hidden');
+        return;
+      }
+      document.getElementById('first-use-overlay').classList.remove('hidden');
+      document.getElementById('first-key-input').focus();
+    }
+
+    function hideFirstUseOverlay() {
+      document.getElementById('first-use-overlay').classList.add('hidden');
+    }
+
+    // Settings accordion
+    document.getElementById('settings-header').addEventListener('click', function() {
+      const body = document.getElementById('settings-body');
+      const arrow = document.getElementById('settings-arrow');
+      body.classList.toggle('open');
+      arrow.classList.toggle('open');
     });
-    document.getElementById('key-cancel').addEventListener('click', () => {
-      document.getElementById('key-modal').classList.add('hidden');
-    });
-    document.getElementById('key-save').addEventListener('click', () => {
+
+    // Save key from settings
+    document.getElementById('btn-key-save').addEventListener('click', function() {
       const input = document.getElementById('key-input').value.trim();
       if (!input) { alert('请输入有效的 API Key'); return; }
       saveKey(input);
       window.location.reload();
     });
 
-    checkKey();
+    // Clear key
+    document.getElementById('btn-key-clear').addEventListener('click', function() {
+      if (!confirm('确定要清除已保存的 Key 吗？')) return;
+      clearKey();
+      window.location.reload();
+    });
 
-    // ====== Load Amap SDK dynamically (updated) ======
+    // First-use save button
+    document.getElementById('first-key-input').addEventListener('input', function() {
+      document.getElementById('btn-first-save').disabled = !this.value.trim();
+    });
+
+    document.getElementById('btn-first-save').addEventListener('click', function() {
+      const input = document.getElementById('first-key-input').value.trim();
+      if (!input) return;
+      saveKey(input);
+      hideFirstUseOverlay();
+      window.location.reload();
+    });
+
+    // Determine initial settings body state
+    if (!hasKey()) {
+      // Auto-expand settings if no key configured
+      document.getElementById('settings-body').classList.add('open');
+      document.getElementById('settings-arrow').classList.add('open');
+    }
+    updateSettingsUI();
+    showFirstUseOverlay();
+
+    // ====== Load Amap SDK dynamically ======
     function loadAmapSDK(callback) {
       const key = getKey();
-      if (!key) {
-        document.getElementById('key-banner').classList.remove('hidden');
-        return;
-      }
+      if (!key) return; // Don't load if no key, first-use overlay will show
+
       const script = document.createElement('script');
       script.src = 'https://webapi.amap.com/maps?v=2.0&key=' + key +
                    '&plugin=AMap.PlaceSearch,AMap.Geolocation,AMap.Geocoder';
       script.onload = function() {
-        checkKey();
+        updateSettingsUI();
+        hideFirstUseOverlay();
         locate();
         if (callback) callback();
       };
       script.onerror = function() {
-        showMessage('高德地图加载失败，请检查 Key 是否正确', 'error');
+        showMessage('高德地图 Key 无效，请检查后重新设置', 'error');
       };
       document.head.appendChild(script);
     }
