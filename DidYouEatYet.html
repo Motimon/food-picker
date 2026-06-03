@@ -861,14 +861,35 @@
     }
 
     // ====== Result Display ======
-    var FOOD_ICONS = ['🍜', '🍕', '🍔', '🍣', '🥘', '🍲', '🫕', '🥟', '🍱', '🥗', '🌮', '🍗', '🥩', '🍝'];
+    // Icon mapping: keyword → emoji, checked in order
+    var FOOD_ICON_MAP = [
+      ['面', '🍜'], ['粉', '🍜'], ['米线', '🍜'], ['拉面', '🍜'], ['刀削面', '🍜'],
+      ['饭', '🍚'], ['煲仔', '🍚'], ['盖浇', '🍚'], ['卤肉', '🍚'], ['黄焖鸡', '🍚'],
+      ['汉堡', '🍔'], ['炸鸡', '🍗'], ['鸡', '🍗'],
+      ['披萨', '🍕'], ['寿司', '🍣'], ['日料', '🍣'],
+      ['火锅', '🥘'], ['麻辣烫', '🥘'], ['麻辣拌', '🥘'], ['麻辣香锅', '🥘'], ['串串', '🥘'],
+      ['烧烤', '🥩'], ['烤肉', '🥩'], ['牛排', '🥩'],
+      ['饺子', '🥟'], ['小笼包', '🥟'], ['馄饨', '🥟'],
+      ['凉皮', '🥗'], ['小吃', '🥗'], ['沙县', '🥗'],
+      ['螺蛳粉', '🫕'], ['酸菜鱼', '🐟'], ['海鲜', '🦞'],
+      ['奶茶', '🧋'], ['咖啡', '☕'],
+      ['煎饼', '🫓'], ['肉夹馍', '🫓'], ['肠粉', '🫓'],
+      ['韩餐', '🇰🇷'], ['西餐', '🍽️'], ['快餐', '🍟'],
+    ];
 
-    function getRandomIcon() {
-      return FOOD_ICONS[Math.floor(Math.random() * FOOD_ICONS.length)];
+    function getIconForName(name) {
+      for (var i = 0; i < FOOD_ICON_MAP.length; i++) {
+        if (name.indexOf(FOOD_ICON_MAP[i][0]) !== -1) {
+          return FOOD_ICON_MAP[i][1];
+        }
+      }
+      // Fallback: random from a diverse set
+      var FALLBACK = ['🍽️', '😋', '🍳', '🥢', '🫕'];
+      return FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
     }
 
     function showResult(restaurant) {
-      document.getElementById('result-icon').textContent = getRandomIcon();
+      document.getElementById('result-icon').textContent = getIconForName(restaurant.name);
       document.getElementById('result-name').textContent = restaurant.name;
 
       if (restaurant.rating) {
