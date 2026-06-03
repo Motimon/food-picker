@@ -441,9 +441,10 @@
     function applyAndReloadSDK() {
       updateSettingsUI();
       hideFirstUseOverlay();
-      // Remove old SDK script if present
+      // Clean up old SDK completely
       var oldScript = document.querySelector('script[src*="webapi.amap.com"]');
       if (oldScript) oldScript.remove();
+      delete window.AMap;
       // Reload SDK with new key
       loadAmapSDK(function() {
         console.log('Amap SDK reloaded');
@@ -717,7 +718,17 @@
                 });
                 resolve(restaurants);
               } else {
-                reject(new Error('搜索失败: ' + (result.info || '未知错误')));
+                // Log full result for debugging
+                console.error('Amap search failed. Status:', status, 'Result:', JSON.stringify(result));
+                if (result && result.info === 'NO_DATA') {
+                  reject(new Error('附近没找到匹配的餐厅，试试换个大点的范围'));
+                } else if (result && result.info === 'INVALID_USER_KEY') {
+                  reject(new Error('Key 或安全密钥无效，请在设置中重新填写'));
+                } else if (result && result.info === 'DAILY_QUERY_OVER_LIMIT') {
+                  reject(new Error('今日高德 API 调用次数已达上限，明天再试吧'));
+                } else {
+                  reject(new Error('搜索失败: ' + (result && result.info || '请检查设置中的 Key 是否有效')));
+                }
               }
             }
           );
@@ -765,50 +776,64 @@
       hideResult();
       hideMessage();
 
+      // Retry helper with outer catch
+      var results = null;
       try {
-        const results = await searchNearby({
-          center: currentPosition,
-          radius: radius,
-          keyword: lastKeyword,
-        });
-
-        searchResults = results;
-
-        if (results.length === 0) {
-          showMessage('这个范围内没有搜到餐厅，试试扩大搜索范围', 'info');
-          showLoading(false);
-          return;
-        }
-
-        filteredResults = filterByBudget(results, minBudget, maxBudget);
-
-        if (filteredResults.length === 0) {
-          const withCost = results.filter(function(r) { return r.avgCost !== null; });
-          if (withCost.length > 0) {
-            const costs = withCost.map(function(r) { return r.avgCost; });
-            const minCost = Math.min.apply(null, costs);
-            const maxCost = Math.max.apply(null, costs);
-            showMessage(
-              '预算区间内没有餐厅。附近均价范围约 ¥' + minCost + '-' + maxCost + '，试试调整预算',
-              'info'
-            );
-          } else {
-            showMessage('搜到了 ' + results.length + ' 家餐厅，但价格信息不足，试试放宽条件', 'info');
+        var retryCount = 0;
+        while (retryCount < 2) {
+          try {
+            results = await searchNearby({
+              center: currentPosition,
+              radius: radius,
+              keyword: lastKeyword,
+            });
+            break; // Success, exit loop
+          } catch (innerErr) {
+            retryCount++;
+            if (retryCount >= 2) throw innerErr;
+            await new Promise(function(r) { setTimeout(r, 800); });
+            lastKeyword = pickRandomKeyword();
+            showLoading(true, lastKeyword);
           }
-          showLoading(false);
-          return;
         }
-
-        seenIndices = [];
-        const idx = Math.floor(Math.random() * filteredResults.length);
-        seenIndices.push(idx);
-        showResult(filteredResults[idx]);
+      } catch (outerErr) {
+        showMessage('搜索出错了: ' + outerErr.message, 'error');
         showLoading(false);
-
-      } catch (err) {
-        showMessage('搜索出错了: ' + err.message, 'error');
-        showLoading(false);
+        return;
       }
+
+      searchResults = results;
+
+      if (results.length === 0) {
+        showMessage('这个范围内没有搜到餐厅，试试扩大搜索范围', 'info');
+        showLoading(false);
+        return;
+      }
+
+      filteredResults = filterByBudget(results, minBudget, maxBudget);
+
+      if (filteredResults.length === 0) {
+        const withCost = results.filter(function(r) { return r.avgCost !== null; });
+        if (withCost.length > 0) {
+          const costs = withCost.map(function(r) { return r.avgCost; });
+          const minCost = Math.min.apply(null, costs);
+          const maxCost = Math.max.apply(null, costs);
+          showMessage(
+            '预算区间内没有餐厅。附近均价范围约 ¥' + minCost + '-' + maxCost + '，试试调整预算',
+            'info'
+          );
+        } else {
+          showMessage('搜到了 ' + results.length + ' 家餐厅，但价格信息不足，试试放宽条件', 'info');
+        }
+        showLoading(false);
+        return;
+      }
+
+      seenIndices = [];
+      const idx = Math.floor(Math.random() * filteredResults.length);
+      seenIndices.push(idx);
+      showResult(filteredResults[idx]);
+      showLoading(false);
     });
 
     // ====== UI Helpers ======
