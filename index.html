@@ -80,6 +80,14 @@
       width: 100%; padding: 10px; border: 1px solid #ddd;
       border-radius: 8px; font-size: 14px; margin-bottom: 10px;
     }
+    .toggle-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; cursor: pointer; padding: 4px 0; margin-bottom: 8px;
+      user-select: none; -webkit-user-select: none;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;
+    }
     #settings-body .btn-row { display: flex; gap: 8px; }
     #settings-body .btn-row button {
       flex: 1; padding: 8px 0; border: none; border-radius: 8px;
@@ -290,9 +298,14 @@
           前往 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
           注册并创建「Web 端(JS API)」应用，获取 Key 和安全密钥
         </p>
-        <input type="text" id="key-input" placeholder="Web端(JS API) Key">
-        <input type="text" id="security-input" placeholder="安全密钥（jscode）">
-        <input type="text" id="service-key-input" placeholder="Web服务 Key（用于查人均消费）">
+        <input type="text" id="key-input" placeholder="Web端(JS API) Key（必填）">
+        <input type="text" id="security-input" placeholder="安全密钥 jscode（必填）">
+        <!-- Cost toggle -->
+        <label class="toggle-row" id="cost-toggle-row">
+          <input type="checkbox" id="cost-toggle">
+          <span>显示人均消费</span>
+        </label>
+        <input type="text" id="service-key-input" placeholder="Web服务 Key（非必填，查人均消费用）" class="hidden">
         <div class="btn-row">
           <button id="btn-key-save">💾 保存</button>
           <button id="btn-key-clear">🗑 清除</button>
@@ -417,6 +430,11 @@
     function saveServiceKey(k) { localStorage.setItem(SERVICE_KEY_STORAGE, k.trim()); }
     function clearServiceKey() { localStorage.removeItem(SERVICE_KEY_STORAGE); }
 
+    // Cost display toggle
+    const COST_TOGGLE_KEY = 'cost_toggle';
+    function getCostToggle() { return localStorage.getItem(COST_TOGGLE_KEY) === 'true'; }
+    function saveCostToggle(v) { localStorage.setItem(COST_TOGGLE_KEY, v ? 'true' : 'false'); }
+
     function hasKey() { return !!(getKey() && getSecurity()); }
 
     // Update settings section UI
@@ -444,6 +462,24 @@
         svcInput.value = '';
         btnPick.disabled = true;
       }
+
+      // Toggle for cost display
+      var toggle = document.getElementById('cost-toggle');
+      toggle.checked = getCostToggle();
+      document.getElementById('service-key-input').classList.toggle('hidden', !toggle.checked);
+    }
+
+    // Cost toggle click
+    document.getElementById('cost-toggle').addEventListener('change', function() {
+      var on = this.checked;
+      saveCostToggle(on);
+      document.getElementById('service-key-input').classList.toggle('hidden', !on);
+      if (!on) clearServiceKey();
+    });
+
+    // Init toggle state
+    if (getCostToggle()) {
+      document.getElementById('service-key-input').classList.remove('hidden');
     }
 
     // First-use overlay
@@ -832,7 +868,8 @@
 
     // Fetch POI details via REST API (JSONP to avoid CORS) to get accurate avgCost
     function enrichWithCostData(restaurants) {
-      var key = getServiceKey() || getKey(); // Prefer Web服务 key, fallback to JS key
+      if (!getCostToggle()) return Promise.resolve(restaurants);
+      var key = getServiceKey() || getKey();
       if (!key) return Promise.resolve(restaurants);
       var toFetch = restaurants.slice(0, 15);
 
@@ -1037,7 +1074,7 @@
       }
 
       if (restaurant.avgCost) {
-        document.getElementById('result-cost').textContent = '人均 ¥' + restaurant.avgCost + '/人';
+        document.getElementById('result-cost').textContent = '¥' + restaurant.avgCost + '/人';
       } else {
         document.getElementById('result-cost').textContent = '人均 -';
       }
