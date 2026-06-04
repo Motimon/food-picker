@@ -373,7 +373,7 @@
     <!-- Loading state -->
     <div id="loading" class="hidden">
       <div class="spinner"></div>
-      <p id="loading-text">正在搜索周边的美食...</p>
+      <p id="loading-text">正在搜索...</p>
     </div>
 
     <!-- Error / empty state -->
@@ -847,7 +847,7 @@
 
       // Pick random food keyword
       lastKeyword = pickRandomKeyword();
-      showLoading(true, lastKeyword);
+      showLoading(true);
       hideResult();
       hideMessage();
 
@@ -868,7 +868,7 @@
             if (retryCount >= 2) throw innerErr;
             await new Promise(function(r) { setTimeout(r, 800); });
             lastKeyword = pickRandomKeyword();
-            showLoading(true, lastKeyword);
+            showLoading(true);
           }
         }
       } catch (outerErr) {
@@ -912,12 +912,8 @@
     });
 
     // ====== UI Helpers ======
-    function showLoading(show, keyword) {
+    function showLoading(show) {
       document.getElementById('loading').classList.toggle('hidden', !show);
-      if (keyword) {
-        document.getElementById('loading-text').textContent =
-          '正在搜索周边的「' + keyword + '」...';
-      }
     }
 
     function hideResult() {
