@@ -819,22 +819,21 @@
       });
     }
 
-    // Fetch POI details via REST API to get accurate avgCost
+    // Fetch POI details via REST API (JSONP to avoid CORS) to get accurate avgCost
     function enrichWithCostData(restaurants) {
       var key = getKey();
       if (!key) return Promise.resolve(restaurants);
-      // Only fetch details for first 15 to keep it fast
       var toFetch = restaurants.slice(0, 15);
 
       var promises = toFetch.map(function(r) {
-        var url = 'https://restapi.amap.com/v3/place/detail?key=' + key +
-                  '&id=' + r.id;
-        return fetch(url)
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            if (data.status === '1' && data.pois && data.pois.length > 0) {
+        return new Promise(function(resolve) {
+          var callbackName = '_amap_cb_' + Math.random().toString(36).slice(2);
+          var url = 'https://restapi.amap.com/v3/place/detail?key=' + key +
+                    '&id=' + r.id + '&callback=' + callbackName;
+
+          window[callbackName] = function(data) {
+            if (data && data.status === '1' && data.pois && data.pois.length > 0) {
               var poi = data.pois[0];
-              // Try to extract cost from detail
               if (poi.biz_ext && poi.biz_ext.cost) {
                 var cost = parseFloat(poi.biz_ext.cost);
                 if (cost > 0) r.avgCost = cost;
@@ -844,10 +843,22 @@
                 if (cost > 0) r.avgCost = cost;
               }
             }
-          })
-          .catch(function() {
-            // Individual fetch failed, keep original avgCost
-          });
+            delete window[callbackName];
+            var s = document.querySelector('script[data-cb="' + callbackName + '"]');
+            if (s) s.remove();
+            resolve();
+          };
+
+          var script = document.createElement('script');
+          script.src = url;
+          script.setAttribute('data-cb', callbackName);
+          script.onerror = function() {
+            delete window[callbackName];
+            script.remove();
+            resolve(); // Silently fail, keep original avgCost
+          };
+          document.head.appendChild(script);
+        });
       });
 
       return Promise.all(promises).then(function() {
