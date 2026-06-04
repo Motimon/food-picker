@@ -251,7 +251,15 @@
     #history-section { margin-top: 24px; }
     #history-section h4 {
       font-size: 14px; color: var(--text-light); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
     }
+    .btn-clear-history {
+      font-size: 11px; padding: 2px 10px;
+      border: 1px solid #e0d0c0; border-radius: 12px;
+      background: transparent; color: #c0a080; cursor: pointer;
+      font-family: inherit; line-height: 1.6;
+    }
+    .btn-clear-history:active { background: #fff0f0; color: var(--red); border-color: var(--red); }
     #history-list { display: flex; flex-wrap: wrap; gap: 8px; }
     .history-item {
       background: var(--card-bg); border-radius: 20px;
@@ -382,7 +390,7 @@
     <!-- History -->
     <section id="history-section">
       <h4>📋 最近选择
-        <button id="btn-clear-history" class="btn-small" style="margin-left:8px;font-size:11px;">清空</button>
+        <button id="btn-clear-history" class="btn-clear-history">🗑 清空</button>
       </h4>
       <div id="history-list"></div>
     </section>
