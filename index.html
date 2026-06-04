@@ -819,6 +819,42 @@
       });
     }
 
+    // Fetch POI details via REST API to get accurate avgCost
+    function enrichWithCostData(restaurants) {
+      var key = getKey();
+      if (!key) return Promise.resolve(restaurants);
+      // Only fetch details for first 15 to keep it fast
+      var toFetch = restaurants.slice(0, 15);
+
+      var promises = toFetch.map(function(r) {
+        var url = 'https://restapi.amap.com/v3/place/detail?key=' + key +
+                  '&id=' + r.id;
+        return fetch(url)
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.status === '1' && data.pois && data.pois.length > 0) {
+              var poi = data.pois[0];
+              // Try to extract cost from detail
+              if (poi.biz_ext && poi.biz_ext.cost) {
+                var cost = parseFloat(poi.biz_ext.cost);
+                if (cost > 0) r.avgCost = cost;
+              }
+              if (!r.avgCost && poi.deep_info && poi.deep_info.avg_cost) {
+                var cost = parseFloat(poi.deep_info.avg_cost);
+                if (cost > 0) r.avgCost = cost;
+              }
+            }
+          })
+          .catch(function() {
+            // Individual fetch failed, keep original avgCost
+          });
+      });
+
+      return Promise.all(promises).then(function() {
+        return restaurants;
+      });
+    }
+
     function parseAvgCost(poi) {
       if (poi.biz_ext && poi.biz_ext.cost) {
         const cost = parseFloat(poi.biz_ext.cost);
@@ -884,6 +920,9 @@
         showLoading(false);
         return;
       }
+
+      // Fetch detailed cost info via Amap REST API
+      results = await enrichWithCostData(results);
 
       searchResults = results;
 
