@@ -309,10 +309,10 @@
     <!-- Location section -->
     <section id="location-section">
       <div class="loc-row">
-        <span class="loc-icon">📍</span>
+        <span class="loc-icon">🧭</span>
         <span id="loc-text">点击下方按钮获取位置</span>
       </div>
-      <button id="btn-locate" class="btn-locate">📍 获取我的位置</button>
+      <button id="btn-locate" class="btn-locate">🧭 获取我的位置</button>
       <div id="loc-error" class="loc-error hidden"></div>
       <!-- Manual location fallback -->
       <div id="manual-loc" class="hidden">
@@ -561,12 +561,12 @@
       var el = document.getElementById('loc-text');
       var btn = document.getElementById('btn-locate');
       if (currentAddress) {
-        el.textContent = '📍 当前位置: ' + currentAddress;
-        btn.textContent = '📍 重新定位';
+        el.textContent = '当前位置: ' + currentAddress;
+        btn.textContent = '🔁 重新定位';
       } else if (currentPosition) {
-        el.textContent = '📍 已定位 (' + currentPosition.lng.toFixed(4) + ', ' +
+        el.textContent = '已定位 (' + currentPosition.lng.toFixed(4) + ', ' +
           currentPosition.lat.toFixed(4) + ')';
-        btn.textContent = '📍 重新定位';
+        btn.textContent = '🔁 重新定位';
       }
       if (currentPosition) {
         document.getElementById('btn-pick').disabled = false;
