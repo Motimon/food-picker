@@ -95,6 +95,10 @@
     }
     #btn-key-save { background: var(--primary); color: white; }
     #btn-key-clear { background: #eee; color: var(--text); }
+    @keyframes flashRed {
+      0%, 100% { background: var(--card-bg); }
+      50% { background: #FFF0F0; }
+    }
 
     /* ====== First-use overlay ====== */
     #first-use-overlay {
@@ -523,11 +527,17 @@
       var key = document.getElementById('key-input').value.trim();
       var sec = document.getElementById('security-input').value.trim();
       var svc = document.getElementById('service-key-input').value.trim();
+      var costOn = document.getElementById('cost-toggle').checked;
       if (key.indexOf('****') !== -1) key = getKey();
       if (sec === '****') sec = getSecurity();
       if (svc.indexOf('****') !== -1) svc = getServiceKey();
       if (!key) { alert('请输入 API Key'); return; }
       if (!sec) { alert('请输入安全密钥（jscode）'); return; }
+      if (costOn && !svc) {
+        flashInput(document.getElementById('service-key-input'));
+        alert('要显示人均消费请另外输入高德Web服务Key\n\n获取步骤：\n1. 前往 lbs.amap.com 登录\n2. 控制台 → 创建新应用 → 类型选「Web服务」\n3. 获取 Key 后填入此输入框即可');
+        return;
+      }
       saveKey(key);
       saveSecurity(sec);
       if (svc) saveServiceKey(svc);
@@ -535,6 +545,15 @@
       document.getElementById('settings-arrow').classList.remove('open');
       applyAndReloadSDK();
     });
+
+    function flashInput(el) {
+      el.style.borderColor = 'var(--red)';
+      el.style.animation = 'flashRed 0.5s ease 3';
+      setTimeout(function() {
+        el.style.borderColor = '';
+        el.style.animation = '';
+      }, 1600);
+    }
 
     // Clear key
     document.getElementById('btn-key-clear').addEventListener('click', function() {
