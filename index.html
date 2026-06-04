@@ -962,10 +962,7 @@
           const costs = withCost.map(function(r) { return r.avgCost; });
           const minCost = Math.min.apply(null, costs);
           const maxCost = Math.max.apply(null, costs);
-          showMessage(
-            '该预算区间内的餐厅已经浏览完了哦~ 附近均价约 ¥' + minCost + '-' + maxCost + '，换一类再试试',
-            'info'
-          );
+          showMessage('该预算区间内的餐厅已经浏览完了哦~', 'info');
         } else {
           showMessage('搜到了 ' + results.length + ' 家餐厅，但价格信息不足，试试放宽条件', 'info');
         }
