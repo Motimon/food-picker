@@ -81,12 +81,12 @@
       border-radius: 8px; font-size: 14px; margin-bottom: 10px;
     }
     .toggle-row {
-      display: flex; align-items: center; gap: 4px;
+      display: inline-flex; align-items: center; gap: 2px;
       font-size: 13px; cursor: pointer; padding: 2px 0; margin-bottom: 10px;
       user-select: none; -webkit-user-select: none;
     }
     .toggle-row input[type="checkbox"] {
-      width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;
+      width: 15px; height: 15px; margin: 0; accent-color: var(--primary); cursor: pointer;
     }
     #settings-body .btn-row { display: flex; gap: 8px; }
     #settings-body .btn-row button {
@@ -972,63 +972,90 @@
       hideResult();
       hideMessage();
 
-      // Retry helper with outer catch
-      var results = null;
+      // Accumulate results across multiple keyword searches for variety
+      var allResults = [];
+      var triedKeywords = [];
+      var searchRounds = 0;
+      var maxRounds = 4;
+
       try {
-        var retryCount = 0;
-        while (retryCount < 2) {
-          try {
-            results = await searchNearby({
-              center: currentPosition,
-              radius: radius,
-              keyword: lastKeyword,
-            });
-            break; // Success, exit loop
-          } catch (innerErr) {
-            retryCount++;
-            if (retryCount >= 2) throw innerErr;
-            await new Promise(function(r) { setTimeout(r, 800); });
-            lastKeyword = pickRandomKeyword();
-            showLoading(true);
+        while (searchRounds < maxRounds) {
+          // Pick a keyword not yet tried
+          var kw = pickRandomKeyword();
+          var avoidLoop = 0;
+          while (triedKeywords.indexOf(kw) !== -1 && avoidLoop < 20) {
+            kw = pickRandomKeyword();
+            avoidLoop++;
           }
+          triedKeywords.push(kw);
+
+          var batch = null;
+          var retryCount = 0;
+          while (retryCount < 2) {
+            try {
+              batch = await searchNearby({
+                center: currentPosition,
+                radius: radius,
+                keyword: kw,
+              });
+              break;
+            } catch (innerErr) {
+              retryCount++;
+              if (retryCount >= 2) throw innerErr;
+              await new Promise(function(r) { setTimeout(r, 800); });
+            }
+          }
+
+          if (batch && batch.length > 0) {
+            // Merge, deduplicate by id
+            for (var i = 0; i < batch.length; i++) {
+              var exists = allResults.some(function(r) { return r.id === batch[i].id; });
+              if (!exists) allResults.push(batch[i]);
+            }
+          }
+
+          // Check if we have enough filtered results
+          var tempFiltered = filterByBudget(allResults, minBudget, maxBudget);
+          searchRounds++;
+          if (tempFiltered.length >= 5) break;
         }
+
+        // Fetch cost details
+        allResults = await enrichWithCostData(allResults);
+
+        searchResults = allResults;
+
+        if (allResults.length === 0) {
+          showMessage('这个范围内没有搜到餐厅，试试扩大搜索范围', 'info');
+          showLoading(false);
+          return;
+        }
+
+        filteredResults = filterByBudget(allResults, minBudget, maxBudget);
+
+        if (filteredResults.length === 0) {
+          showMessage('该预算区间内的餐厅已经浏览完了哦~', 'info');
+          showLoading(false);
+          return;
+        }
+
+        // Shuffle for randomness
+        for (var s = filteredResults.length - 1; s > 0; s--) {
+          var j = Math.floor(Math.random() * (s + 1));
+          var tmp = filteredResults[s];
+          filteredResults[s] = filteredResults[j];
+          filteredResults[j] = tmp;
+        }
+
       } catch (outerErr) {
         showMessage('搜索出错了: ' + outerErr.message, 'error');
         showLoading(false);
         return;
       }
 
-      // Fetch detailed cost info via Amap REST API
-      results = await enrichWithCostData(results);
-
-      searchResults = results;
-
-      if (results.length === 0) {
-        showMessage('这个范围内没有搜到餐厅，试试扩大搜索范围', 'info');
-        showLoading(false);
-        return;
-      }
-
-      filteredResults = filterByBudget(results, minBudget, maxBudget);
-
-      if (filteredResults.length === 0) {
-        const withCost = results.filter(function(r) { return r.avgCost !== null; });
-        if (withCost.length > 0) {
-          const costs = withCost.map(function(r) { return r.avgCost; });
-          const minCost = Math.min.apply(null, costs);
-          const maxCost = Math.max.apply(null, costs);
-          showMessage('该预算区间内的餐厅已经浏览完了哦~', 'info');
-        } else {
-          showMessage('搜到了 ' + results.length + ' 家餐厅，但价格信息不足，试试放宽条件', 'info');
-        }
-        showLoading(false);
-        return;
-      }
-
       seenIndices = [];
-      const idx = Math.floor(Math.random() * filteredResults.length);
-      seenIndices.push(idx);
-      showResult(filteredResults[idx]);
+      seenIndices.push(0);
+      showResult(filteredResults[0]);
       showLoading(false);
     });
 
@@ -1092,7 +1119,7 @@
       }
 
       if (restaurant.avgCost) {
-        document.getElementById('result-cost').textContent = '¥' + restaurant.avgCost + '/人';
+        document.getElementById('result-cost').textContent = '平均 ¥' + restaurant.avgCost + '/人';
       } else {
         document.getElementById('result-cost').textContent = '人均 -';
       }
