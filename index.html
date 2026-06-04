@@ -290,8 +290,9 @@
           前往 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
           注册并创建「Web 端(JS API)」应用，获取 Key 和安全密钥
         </p>
-        <input type="text" id="key-input" placeholder="粘贴你的高德 Key">
-        <input type="text" id="security-input" placeholder="粘贴安全密钥（jscode）">
+        <input type="text" id="key-input" placeholder="Web端(JS API) Key">
+        <input type="text" id="security-input" placeholder="安全密钥（jscode）">
+        <input type="text" id="service-key-input" placeholder="Web服务 Key（用于查人均消费）">
         <div class="btn-row">
           <button id="btn-key-save">💾 保存</button>
           <button id="btn-key-clear">🗑 清除</button>
@@ -304,8 +305,9 @@
       <div id="first-use-card">
         <h2>🍜 欢迎使用！</h2>
         <p class="sub">在开始之前，请先配置高德地图 API Key</p>
-        <input type="text" id="first-key-input" placeholder="粘贴你的 Key">
-        <input type="text" id="first-security-input" placeholder="粘贴安全密钥（jscode）">
+        <input type="text" id="first-key-input" placeholder="Web端(JS API) Key">
+        <input type="text" id="first-security-input" placeholder="安全密钥（jscode）">
+        <input type="text" id="first-service-input" placeholder="Web服务 Key（查人均消费）">
         <div class="tip">
           还没有 Key？去 <a href="https://lbs.amap.com" target="_blank">lbs.amap.com</a>
           免费注册，创建「Web 服务」应用即可获取。
@@ -401,6 +403,7 @@
     // ====== API Key Management ======
     const KEY_STORAGE = 'amap_key';
     const SECURITY_STORAGE = 'amap_security';
+    const SERVICE_KEY_STORAGE = 'amap_service_key';
 
     function getKey() { return localStorage.getItem(KEY_STORAGE) || ''; }
     function saveKey(k) { localStorage.setItem(KEY_STORAGE, k.trim()); }
@@ -409,6 +412,10 @@
     function getSecurity() { return localStorage.getItem(SECURITY_STORAGE) || ''; }
     function saveSecurity(s) { localStorage.setItem(SECURITY_STORAGE, s.trim()); }
     function clearSecurity() { localStorage.removeItem(SECURITY_STORAGE); }
+
+    function getServiceKey() { return localStorage.getItem(SERVICE_KEY_STORAGE) || ''; }
+    function saveServiceKey(k) { localStorage.setItem(SERVICE_KEY_STORAGE, k.trim()); }
+    function clearServiceKey() { localStorage.removeItem(SERVICE_KEY_STORAGE); }
 
     function hasKey() { return !!(getKey() && getSecurity()); }
 
@@ -419,6 +426,7 @@
       const btnPick = document.getElementById('btn-pick');
       const keyInput = document.getElementById('key-input');
       const secInput = document.getElementById('security-input');
+      const svcInput = document.getElementById('service-key-input');
 
       if (has) {
         status.textContent = '已配置 ✓';
@@ -426,11 +434,14 @@
         const k = getKey();
         keyInput.value = k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : k;
         secInput.value = '****';
+        const sk = getServiceKey();
+        svcInput.value = sk.length > 8 ? sk.slice(0, 4) + '****' + sk.slice(-4) : (sk || '');
       } else {
         status.textContent = '未配置 Key';
         status.className = 'no';
         keyInput.value = '';
         secInput.value = '';
+        svcInput.value = '';
         btnPick.disabled = true;
       }
     }
@@ -475,18 +486,15 @@
     document.getElementById('btn-key-save').addEventListener('click', function() {
       var key = document.getElementById('key-input').value.trim();
       var sec = document.getElementById('security-input').value.trim();
-      // If input still shows masked value, use stored original
-      if (key.indexOf('****') !== -1) {
-        key = getKey();
-      }
-      if (sec === '****') {
-        sec = getSecurity();
-      }
+      var svc = document.getElementById('service-key-input').value.trim();
+      if (key.indexOf('****') !== -1) key = getKey();
+      if (sec === '****') sec = getSecurity();
+      if (svc.indexOf('****') !== -1) svc = getServiceKey();
       if (!key) { alert('请输入 API Key'); return; }
       if (!sec) { alert('请输入安全密钥（jscode）'); return; }
       saveKey(key);
       saveSecurity(sec);
-      // Collapse settings
+      if (svc) saveServiceKey(svc);
       document.getElementById('settings-body').classList.remove('open');
       document.getElementById('settings-arrow').classList.remove('open');
       applyAndReloadSDK();
@@ -494,13 +502,14 @@
 
     // Clear key
     document.getElementById('btn-key-clear').addEventListener('click', function() {
-      if (!confirm('确定要清除已保存的 Key 和安全密钥吗？')) return;
+      if (!confirm('确定要清除所有已保存的 Key 吗？')) return;
       clearKey();
       clearSecurity();
+      clearServiceKey();
       window.location.reload();
     });
 
-    // First-use: enable button only when both fields are filled
+    // First-use: enable button only when JS key and security are filled
     function checkFirstUseReady() {
       const keyOk = document.getElementById('first-key-input').value.trim().length > 0;
       const secOk = document.getElementById('first-security-input').value.trim().length > 0;
@@ -512,9 +521,11 @@
     document.getElementById('btn-first-save').addEventListener('click', function() {
       const key = document.getElementById('first-key-input').value.trim();
       const sec = document.getElementById('first-security-input').value.trim();
+      const svc = document.getElementById('first-service-input').value.trim();
       if (!key || !sec) return;
       saveKey(key);
       saveSecurity(sec);
+      if (svc) saveServiceKey(svc);
       hideFirstUseOverlay();
       applyAndReloadSDK();
     });
@@ -821,7 +832,7 @@
 
     // Fetch POI details via REST API (JSONP to avoid CORS) to get accurate avgCost
     function enrichWithCostData(restaurants) {
-      var key = getKey();
+      var key = getServiceKey() || getKey(); // Prefer Web服务 key, fallback to JS key
       if (!key) return Promise.resolve(restaurants);
       var toFetch = restaurants.slice(0, 15);
 
