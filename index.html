@@ -877,13 +877,20 @@
               };
               currentAddress = geocodes[0].formattedAddress || addr;
               updateLocationUI();
-      
               document.getElementById('loc-retry').classList.remove('hidden');
             } else {
-              showMessage('找不到这个地址，请换个关键词试试', 'error');
+              showMessage('找不到「' + addr + '」，输入城市+街道会更准哦', 'error');
             }
           } else {
-            showMessage('地址搜索失败，请重试', 'error');
+            var info = result && result.info;
+            console.error('Geocoder failed. Status:', status, 'Info:', info);
+            if (info === 'INVALID_USER_KEY') {
+              showMessage('Key 无效，请检查设置', 'error');
+            } else if (info === 'DAILY_QUERY_OVER_LIMIT') {
+              showMessage('今日查询次数已达上限，明天再试', 'error');
+            } else {
+              showMessage('地址解析失败，输入城市+街道会更准哦', 'error');
+            }
           }
         });
       });
