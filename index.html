@@ -81,8 +81,8 @@
       border-radius: 8px; font-size: 14px; margin-bottom: 10px;
     }
     .toggle-row {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 14px; cursor: pointer; padding: 4px 0; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; cursor: pointer; padding: 2px 0; margin-bottom: 10px;
       user-select: none; -webkit-user-select: none;
     }
     .toggle-row input[type="checkbox"] {
@@ -304,12 +304,11 @@
         </p>
         <input type="text" id="key-input" placeholder="Web端(JS API) Key（必填）">
         <input type="text" id="security-input" placeholder="安全密钥 jscode（必填）">
-        <!-- Cost toggle -->
-        <label class="toggle-row" id="cost-toggle-row">
+        <input type="text" id="service-key-input" placeholder="Web服务 Key（非必填，查人均消费用）" class="hidden">
+        <label class="toggle-row">
           <input type="checkbox" id="cost-toggle">
           <span>显示人均消费</span>
         </label>
-        <input type="text" id="service-key-input" placeholder="Web服务 Key（非必填，查人均消费用）" class="hidden">
         <div class="btn-row">
           <button id="btn-key-save">💾 保存</button>
           <button id="btn-key-clear">🗑 清除</button>
