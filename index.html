@@ -407,7 +407,7 @@
       <div id="loc-error" class="loc-error hidden"></div>
       <!-- Manual location fallback -->
       <div id="manual-loc">
-        <input type="text" id="manual-address" placeholder="🔍 手动输入地址（如：中山路步行街）">
+        <input type="text" id="manual-address" placeholder="🔍 手动输入地址">
         <button id="manual-search">搜索</button>
       </div>
     </section>
@@ -860,7 +860,7 @@
     // Manual address search via Amap geocoding
     document.getElementById('manual-search').addEventListener('click', function() {
       const addr = document.getElementById('manual-address').value.trim();
-      if (!addr) return;
+      if (!addr) { alert('请先输入地址，如「中山路步行街」'); return; }
       if (!window.AMap) {
         showMessage('高德地图未加载，请先配置 API Key', 'error');
         return;
