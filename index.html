@@ -406,8 +406,8 @@
       <button id="btn-locate" class="btn-locate">🧭 获取我的位置</button>
       <div id="loc-error" class="loc-error hidden"></div>
       <!-- Manual location fallback -->
-      <div id="manual-loc" class="hidden">
-        <input type="text" id="manual-address" placeholder="或手动输入地址">
+      <div id="manual-loc">
+        <input type="text" id="manual-address" placeholder="🔍 手动输入地址（如：中山路步行街）">
         <button id="manual-search">搜索</button>
       </div>
     </section>
@@ -819,7 +819,7 @@
               currentAddress = amapResult.address || '';
               updateLocationUI();
               hideLocError();
-              document.getElementById('manual-loc').classList.add('hidden');
+      
               return;
             } catch (amapErr) {
               onLocateFail(highErr);
@@ -842,13 +842,13 @@
             }).catch(function() {});
           } catch (e) {}
         }
-        document.getElementById('manual-loc').classList.add('hidden');
+
       }
 
       function onLocateFail(err) {
         showLocError(err.message || '定位失败');
         locText.textContent = '点击下方按钮获取位置';
-        document.getElementById('manual-loc').classList.remove('hidden');
+
       }
     }
 
@@ -877,7 +877,7 @@
               };
               currentAddress = geocodes[0].formattedAddress || addr;
               updateLocationUI();
-              document.getElementById('manual-loc').classList.add('hidden');
+      
               document.getElementById('loc-retry').classList.remove('hidden');
             } else {
               showMessage('找不到这个地址，请换个关键词试试', 'error');
