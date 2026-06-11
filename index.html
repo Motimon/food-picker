@@ -173,9 +173,9 @@
       background: var(--card-bg); border-radius: var(--radius);
       padding: 14px; box-shadow: var(--shadow);
     }
-    #radius-select {
-      width: 100%; padding: 10px; border: 1px solid #ddd;
-      border-radius: 8px; font-size: 16px; background: white;
+    #radius-min, #radius-max {
+      flex: 1; padding: 10px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 16px; background: white; min-width: 0;
     }
 
     /* ====== Budget ====== */
@@ -412,16 +412,30 @@
       </div>
     </section>
 
-    <!-- Radius selector -->
+    <!-- Radius range -->
     <section id="radius-section">
-      <label class="param-label">搜索范围</label>
-      <select id="radius-select">
-        <option value="500">500m</option>
-        <option value="1000" selected>1000m</option>
-        <option value="2000">2000m</option>
-        <option value="3000">3000m</option>
-        <option value="5000">5000m</option>
-      </select>
+      <label class="param-label">距离范围</label>
+      <div class="budget-row">
+        <select id="radius-min">
+          <option value="0" selected>0m</option>
+          <option value="200">200m</option>
+          <option value="500">500m</option>
+          <option value="1000">1000m</option>
+          <option value="2000">2000m</option>
+          <option value="3000">3000m</option>
+          <option value="5000">5000m</option>
+        </select>
+        <span>～</span>
+        <select id="radius-max">
+          <option value="200">200m</option>
+          <option value="500">500m</option>
+          <option value="1000" selected>1000m</option>
+          <option value="2000">2000m</option>
+          <option value="3000">3000m</option>
+          <option value="5000">5000m</option>
+          <option value="8000">8000m</option>
+        </select>
+      </div>
     </section>
 
     <!-- Budget range -->
@@ -1112,7 +1126,12 @@
         return;
       }
 
-      const radius = parseInt(document.getElementById('radius-select').value);
+      const radiusMin = parseInt(document.getElementById('radius-min').value);
+      const radiusMax = parseInt(document.getElementById('radius-max').value);
+      if (radiusMin >= radiusMax) {
+        showMessage('距离范围设置有误，最小值不能大于等于最大值', 'error');
+        return;
+      }
       const minBudget = parseInt(document.getElementById('budget-min').value) || 0;
       const maxBudget = parseInt(document.getElementById('budget-max').value) || 9999;
 
@@ -1145,7 +1164,7 @@
             try {
               batch = await searchNearby({
                 center: currentPosition,
-                radius: radius,
+                radius: radiusMax,
                 keyword: kw,
               });
               break;
@@ -1179,6 +1198,11 @@
 
         // Exclude blacklisted restaurants
       allResults = excludeBlacklisted(allResults);
+
+      // Filter by minimum distance
+      if (radiusMin > 0) {
+        allResults = allResults.filter(function(r) { return r.distance >= radiusMin; });
+      }
 
       searchResults = allResults;
 
